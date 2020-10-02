@@ -7,9 +7,16 @@ using System.Collections.Generic;
 
 namespace resizeimg
 {
+    public class OutputFile
+    {
+        public Bitmap File { get; set; }
+        public string Filepath { get; set; }
+    }
+    
     public class Program
     {
         static DirectoryInfo dirInfo;
+        static List<OutputFile> outputFiles = new List<OutputFile>();
 
         static void ListAllDirs()
         {
@@ -54,38 +61,52 @@ namespace resizeimg
             }
         }
 
+        static void ManipulateImage(FileInfo fileInfo, float percent)
+        {
+            if (fileInfo.Extension.Equals(".jpg") || fileInfo.Extension.Equals(".png") || fileInfo.Extension.Equals(".jpeg") || fileInfo.Extension.Equals(".gif"))
+            {
+                Bitmap loadedImage = (Bitmap)Bitmap.FromFile(fileInfo.FullName);
+                if (loadedImage != null)
+                {
+                    int newWidth = Convert.ToInt32(loadedImage.Width * percent);
+                    int newHeight = Convert.ToInt32(loadedImage.Height * percent);
+
+                    Console.WriteLine(string.Format("w:{0}|h:{1}|new width:{2}|new height:{3}", loadedImage.Width, loadedImage.Height, newWidth, newHeight));
+
+                    Bitmap newImage = new Bitmap(loadedImage, new Size(newWidth, newHeight));
+                    outputFiles.Add(new OutputFile { File = newImage, Filepath = fileInfo.DirectoryName + "\\" + "resample_" + Guid.NewGuid().ToString() + ".jpg" });
+                }
+                else
+                {
+                    Console.WriteLine("Erro ao tentar abrir imagem!");
+                }
+
+            }
+        }
+
         static void ResampleImage(float percent)
         {
-            List<Bitmap> outputFiles = new List<Bitmap>();
-            string dirName = dirInfo.FullName;
-            for(int i = 0; i < dirInfo.GetFiles().Length; ++i)
+            if(dirInfo.GetDirectories().Length > 0)
             {
-                FileInfo currentFile = dirInfo.GetFiles()[i];
-                if(currentFile.Extension.Equals(".jpg") || currentFile.Extension.Equals(".png") || currentFile.Extension.Equals(".jpeg") || currentFile.Extension.Equals(".gif"))
+                for(int x = 0; x < dirInfo.GetDirectories().Length; ++x)
                 {
-                    Bitmap loadedImage = (Bitmap)Bitmap.FromFile(currentFile.FullName);
-                    if(loadedImage != null)
+                    for (int i = 0; i < dirInfo.GetDirectories()[x].GetFiles().Length; ++i)
                     {
-                        int newWidth = Convert.ToInt32(loadedImage.Width * percent);
-                        int newHeight = Convert.ToInt32(loadedImage.Height *  percent);
-
-                        Console.WriteLine(string.Format("w:{0}|h:{1}|new width:{2}|new height:{3}", loadedImage.Width, loadedImage.Height, newWidth, newHeight));
-
-                        Bitmap newImage = new Bitmap(loadedImage, new Size(newWidth, newHeight));
-                        outputFiles.Add(newImage);
+                        FileInfo currentFile = dirInfo.GetDirectories()[x].GetFiles()[i];
+                        ManipulateImage(currentFile, percent);
                     }
-                    else
-                    {
-                        Console.WriteLine("Erro ao tentar abrir imagem!");
-                    }
-
                 }
             }
-            foreach(Bitmap b in outputFiles)
+            else
             {
-                string filePath = dirName + "\\" + "resample_" + Guid.NewGuid().ToString() + ".jpg";
-                b.Save(filePath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                for(int i = 0; i < dirInfo.GetFiles().Length; ++i)
+                {
+                    FileInfo currentFile = dirInfo.GetFiles()[i];
+                    ManipulateImage(currentFile, percent);
+                }
             }
+            foreach (OutputFile of in outputFiles)
+                of.File.Save(of.Filepath, System.Drawing.Imaging.ImageFormat.Jpeg);
         }
 
         static void Main(string[] args)
